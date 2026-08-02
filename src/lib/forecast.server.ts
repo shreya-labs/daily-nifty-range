@@ -167,3 +167,79 @@ export async function runAndStoreForecast(): Promise<Forecast> {
   if (error) throw new Error(`Failed to save forecast: ${error.message}`);
   return forecast;
 }
+
+export type BackfillResult = { inserted: number; dates: string[] };
+
+/**
+ * Recompute forecasts for every trading day whose *forecast date* falls in
+ * [fromISO, toISO], using only data available up to the prior close, and
+ * attach the actual OHLC that was printed on the forecast date.
+ */
+export async function backfillForecasts(
+  fromISO: string,
+  toISO: string,
+): Promise<BackfillResult> {
+  const apiKey = process.env["ANGEL_API_KEY"];
+  const clientId = process.env["ANGEL_CLIENT_ID"];
+  const password = process.env["ANGEL_CLIENT_PASSWORD"];
+  const totpSecret = process.env["ANGEL_TOTP_SECRET"];
+  if (!apiKey || !clientId || !password || !totpSecret) {
+    throw new Error("Missing Angel One credentials");
+  }
+
+  const jwt = await login({ apiKey, clientId, password, totpSecret });
+  const nifty = await fetchDailyCandles({
+    jwt,
+    historicalApiKey: apiKey,
+    exchange: "NSE",
+    symbolToken: "99926000",
+    name: "NIFTY_50",
+  });
+  await new Promise((r) => setTimeout(r, 3000));
+  const vix = await fetchDailyCandles({
+    jwt,
+    historicalApiKey: apiKey,
+    exchange: "NSE",
+    symbolToken: "99926017",
+    name: "INDIA_VIX",
+  });
+
+  const day = (c: Candle) => c.datetime.slice(0, 10);
+  const rows: (Forecast & {
+    actual_open: number;
+    actual_high: number;
+    actual_low: number;
+    actual_close: number;
+  })[] = [];
+
+  for (let i = 31; i < nifty.length; i++) {
+    const target = nifty[i]!;
+    const targetDay = day(target);
+    if (targetDay < fromISO || targetDay > toISO) continue;
+
+    const priorNifty = nifty.slice(0, i);
+    const asOf = day(priorNifty[priorNifty.length - 1]!);
+    const priorVix = vix.filter((c) => day(c) <= asOf);
+    if (priorVix.length === 0) continue;
+
+    const forecast = buildForecast(priorNifty, priorVix);
+    rows.push({
+      ...forecast,
+      forecast_date: targetDay,
+      actual_open: round(target.open),
+      actual_high: round(target.high),
+      actual_low: round(target.low),
+      actual_close: round(target.close),
+    });
+  }
+
+  if (rows.length === 0) return { inserted: 0, dates: [] };
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin
+    .from("nifty_forecasts")
+    .upsert(rows, { onConflict: "forecast_date" });
+  if (error) throw new Error(`Failed to save backfill: ${error.message}`);
+
+  return { inserted: rows.length, dates: rows.map((r) => r.forecast_date) };
+}
