@@ -166,12 +166,14 @@ function Dashboard() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
             Next-Day Range Forecast
           </h1>
+          <TabNav />
         </div>
         <div className="num text-right text-xs text-muted-foreground">
           <p>Version 2 ensemble</p>
           <p>HV · ATR · RV · EWMA · India VIX</p>
         </div>
       </header>
+
 
       <div className="mt-6 h-px w-full" style={{ backgroundImage: "var(--gradient-signal)" }} />
 

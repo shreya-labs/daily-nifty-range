@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccuracyRouteImport } from './routes/accuracy'
 import { Route as ApiPublicHooksBackfillForecastsRouteImport } from './routes/api/public/hooks/backfill-forecasts'
 import { Route as ApiPublicHooksDailyForecastRouteImport } from './routes/api/public/hooks/daily-forecast'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccuracyRoute = AccuracyRouteImport.update({
+  id: '/accuracy',
+  path: '/accuracy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicHooksBackfillForecastsRoute =
@@ -33,17 +39,20 @@ const ApiPublicHooksDailyForecastRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/accuracy': typeof AccuracyRoute
   '/api/public/hooks/backfill-forecasts': typeof ApiPublicHooksBackfillForecastsRoute
   '/api/public/hooks/daily-forecast': typeof ApiPublicHooksDailyForecastRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/accuracy': typeof AccuracyRoute
   '/api/public/hooks/backfill-forecasts': typeof ApiPublicHooksBackfillForecastsRoute
   '/api/public/hooks/daily-forecast': typeof ApiPublicHooksDailyForecastRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/accuracy': typeof AccuracyRoute
   '/api/public/hooks/backfill-forecasts': typeof ApiPublicHooksBackfillForecastsRoute
   '/api/public/hooks/daily-forecast': typeof ApiPublicHooksDailyForecastRoute
 }
@@ -51,22 +60,26 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accuracy'
     | '/api/public/hooks/backfill-forecasts'
     | '/api/public/hooks/daily-forecast'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/accuracy'
     | '/api/public/hooks/backfill-forecasts'
     | '/api/public/hooks/daily-forecast'
   id:
     | '__root__'
     | '/'
+    | '/accuracy'
     | '/api/public/hooks/backfill-forecasts'
     | '/api/public/hooks/daily-forecast'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccuracyRoute: typeof AccuracyRoute
   ApiPublicHooksBackfillForecastsRoute: typeof ApiPublicHooksBackfillForecastsRoute
   ApiPublicHooksDailyForecastRoute: typeof ApiPublicHooksDailyForecastRoute
 }
@@ -78,6 +91,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/accuracy': {
+      id: '/accuracy'
+      path: '/accuracy'
+      fullPath: '/accuracy'
+      preLoaderRoute: typeof AccuracyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/backfill-forecasts': {
@@ -99,6 +119,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccuracyRoute: AccuracyRoute,
   ApiPublicHooksBackfillForecastsRoute: ApiPublicHooksBackfillForecastsRoute,
   ApiPublicHooksDailyForecastRoute: ApiPublicHooksDailyForecastRoute,
 }
