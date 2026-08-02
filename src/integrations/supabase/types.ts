@@ -14,7 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      nifty_forecasts: {
+        Row: {
+          as_of_date: string
+          atr14_half_range_points: number
+          close_68_high: number
+          close_68_low: number
+          close_95_high: number
+          close_95_low: number
+          created_at: string
+          ewma_points: number
+          expected_high: number
+          expected_low: number
+          expected_move_percent: number
+          expected_move_points: number
+          expected_total_range_points: number
+          forecast_date: string
+          hv30_points: number
+          id: string
+          india_vix: number
+          last_close: number
+          rv20_points: number
+          updated_at: string
+          vix_implied_points: number
+        }
+        Insert: {
+          as_of_date: string
+          atr14_half_range_points: number
+          close_68_high: number
+          close_68_low: number
+          close_95_high: number
+          close_95_low: number
+          created_at?: string
+          ewma_points: number
+          expected_high: number
+          expected_low: number
+          expected_move_percent: number
+          expected_move_points: number
+          expected_total_range_points: number
+          forecast_date: string
+          hv30_points: number
+          id?: string
+          india_vix: number
+          last_close: number
+          rv20_points: number
+          updated_at?: string
+          vix_implied_points: number
+        }
+        Update: {
+          as_of_date?: string
+          atr14_half_range_points?: number
+          close_68_high?: number
+          close_68_low?: number
+          close_95_high?: number
+          close_95_low?: number
+          created_at?: string
+          ewma_points?: number
+          expected_high?: number
+          expected_low?: number
+          expected_move_percent?: number
+          expected_move_points?: number
+          expected_total_range_points?: number
+          forecast_date?: string
+          hv30_points?: number
+          id?: string
+          india_vix?: number
+          last_close?: number
+          rv20_points?: number
+          updated_at?: string
+          vix_implied_points?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
