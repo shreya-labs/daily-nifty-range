@@ -16,6 +16,10 @@ export type Database = {
     Tables: {
       nifty_forecasts: {
         Row: {
+          actual_close: number | null
+          actual_high: number | null
+          actual_low: number | null
+          actual_open: number | null
           as_of_date: string
           atr14_half_range_points: number
           close_68_high: number
@@ -39,6 +43,10 @@ export type Database = {
           vix_implied_points: number
         }
         Insert: {
+          actual_close?: number | null
+          actual_high?: number | null
+          actual_low?: number | null
+          actual_open?: number | null
           as_of_date: string
           atr14_half_range_points: number
           close_68_high: number
@@ -62,6 +70,10 @@ export type Database = {
           vix_implied_points: number
         }
         Update: {
+          actual_close?: number | null
+          actual_high?: number | null
+          actual_low?: number | null
+          actual_open?: number | null
           as_of_date?: string
           atr14_half_range_points?: number
           close_68_high?: number
