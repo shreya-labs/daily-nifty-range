@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { getForecasts, type ForecastRecord } from "@/lib/forecast.functions";
+import { TabNav } from "@/components/TabNav";
 
 const forecastsQueryOptions = queryOptions({
   queryKey: ["nifty-forecasts"],
