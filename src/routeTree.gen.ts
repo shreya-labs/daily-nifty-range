@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicHooksBackfillForecastsRouteImport } from './routes/api/public/hooks/backfill-forecasts'
 import { Route as ApiPublicHooksDailyForecastRouteImport } from './routes/api/public/hooks/daily-forecast'
 
 const IndexRoute = IndexRouteImport.update({
@@ -17,6 +18,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksBackfillForecastsRoute =
+  ApiPublicHooksBackfillForecastsRouteImport.update({
+    id: '/api/public/hooks/backfill-forecasts',
+    path: '/api/public/hooks/backfill-forecasts',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksDailyForecastRoute =
   ApiPublicHooksDailyForecastRouteImport.update({
     id: '/api/public/hooks/daily-forecast',
@@ -26,27 +33,41 @@ const ApiPublicHooksDailyForecastRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/public/hooks/backfill-forecasts': typeof ApiPublicHooksBackfillForecastsRoute
   '/api/public/hooks/daily-forecast': typeof ApiPublicHooksDailyForecastRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/public/hooks/backfill-forecasts': typeof ApiPublicHooksBackfillForecastsRoute
   '/api/public/hooks/daily-forecast': typeof ApiPublicHooksDailyForecastRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/public/hooks/backfill-forecasts': typeof ApiPublicHooksBackfillForecastsRoute
   '/api/public/hooks/daily-forecast': typeof ApiPublicHooksDailyForecastRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/public/hooks/daily-forecast'
+  fullPaths:
+    | '/'
+    | '/api/public/hooks/backfill-forecasts'
+    | '/api/public/hooks/daily-forecast'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/hooks/daily-forecast'
-  id: '__root__' | '/' | '/api/public/hooks/daily-forecast'
+  to:
+    | '/'
+    | '/api/public/hooks/backfill-forecasts'
+    | '/api/public/hooks/daily-forecast'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/public/hooks/backfill-forecasts'
+    | '/api/public/hooks/daily-forecast'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiPublicHooksBackfillForecastsRoute: typeof ApiPublicHooksBackfillForecastsRoute
   ApiPublicHooksDailyForecastRoute: typeof ApiPublicHooksDailyForecastRoute
 }
 
@@ -57,6 +78,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/backfill-forecasts': {
+      id: '/api/public/hooks/backfill-forecasts'
+      path: '/api/public/hooks/backfill-forecasts'
+      fullPath: '/api/public/hooks/backfill-forecasts'
+      preLoaderRoute: typeof ApiPublicHooksBackfillForecastsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/daily-forecast': {
@@ -71,6 +99,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiPublicHooksBackfillForecastsRoute: ApiPublicHooksBackfillForecastsRoute,
   ApiPublicHooksDailyForecastRoute: ApiPublicHooksDailyForecastRoute,
 }
 export const routeTree = rootRouteImport
