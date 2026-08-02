@@ -129,7 +129,9 @@ export async function runDailyForecast(): Promise<Forecast> {
   const clientId = process.env["ANGEL_CLIENT_ID"];
   const password = process.env["ANGEL_CLIENT_PASSWORD"];
   const totpSecret = process.env["ANGEL_TOTP_SECRET"];
-  const historicalApiKey = process.env["ANGEL_HISTORICAL_API_KEY"] ?? apiKey;
+  // The historical/candle API accepts the same key used for login (matches auth.py).
+  const historicalApiKey = apiKey;
+
 
   if (!apiKey || !clientId || !password || !totpSecret || !historicalApiKey) {
     throw new Error("Missing Angel One credentials");
