@@ -34,7 +34,7 @@ export const Route = createFileRoute("/accuracy")({
     </div>
   ),
   notFoundComponent: () => <div className="p-10 text-sm">No history found.</div>,
-  component: AccuracyPage;
+  component: AccuracyPage,
 });
 
 const num = (value: number | string, digits = 2) =>
