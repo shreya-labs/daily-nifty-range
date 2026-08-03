@@ -123,6 +123,11 @@ function formatDate(d: Date): string {
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
+/** "Today" in IST, as YYYY-MM-DD. */
+export function istToday(): string {
+  return formatDate(new Date(Date.now() + IST_OFFSET_MS));
+}
+
 export async function fetchDailyCandles(params: {
   jwt: string;
   historicalApiKey: string;
@@ -131,15 +136,57 @@ export async function fetchDailyCandles(params: {
   name: string;
 }): Promise<Candle[]> {
   // Window ends at "today" in IST so the session that just closed is included.
-  const end = new Date(Date.now() + IST_OFFSET_MS);
-  const start = new Date(end.getTime() - 365 * 24 * 60 * 60 * 1000);
+  const today = istToday();
+  const start = new Date(Date.now() + IST_OFFSET_MS - 365 * 24 * 60 * 60 * 1000);
+  const daily = await requestCandles(params, {
+    interval: "ONE_DAY",
+    fromdate: `${formatDate(start)} 00:00`,
+    todate: `${today} 23:59`,
+  });
+
+  // Angel publishes the index daily candle with a delay; if today's session is
+  // missing, rebuild it from today's hourly candles so the forecast uses the
+  // close that just printed.
+  const hasToday = daily.some((c) => c.datetime.slice(0, 10) === today);
+  if (!hasToday) {
+    let intraday: Candle[] = [];
+    try {
+      intraday = await requestCandles(params, {
+        interval: "ONE_HOUR",
+        fromdate: `${today} 09:00`,
+        todate: `${today} 15:45`,
+      });
+    } catch {
+      intraday = [];
+    }
+    const bars = intraday.filter((c) => c.datetime.slice(0, 10) === today);
+    if (bars.length > 0) {
+      daily.push({
+        datetime: `${today}T00:00:00+05:30`,
+        open: bars[0]!.open,
+        high: Math.max(...bars.map((b) => b.high)),
+        low: Math.min(...bars.map((b) => b.low)),
+        close: bars[bars.length - 1]!.close,
+        volume: bars.reduce((a, b) => a + b.volume, 0),
+      });
+    }
+  }
+
+  return daily;
+}
+
+async function requestCandles(
+  params: { jwt: string; historicalApiKey: string; exchange: string; symbolToken: string; name: string },
+  window: { interval: string; fromdate: string; todate: string },
+): Promise<Candle[]> {
   const payload = {
     exchange: params.exchange,
     symboltoken: params.symbolToken,
-    interval: "ONE_DAY",
-    fromdate: `${formatDate(start)} 00:00`,
-    todate: `${formatDate(end)} 23:59`,
+    interval: window.interval,
+    fromdate: window.fromdate,
+    todate: window.todate,
   };
+
 
   const delays = [2, 4, 8, 16, 32];
   let lastError = "unknown error";
