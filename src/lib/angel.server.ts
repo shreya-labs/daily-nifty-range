@@ -121,6 +121,8 @@ function formatDate(d: Date): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
 
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 export async function fetchDailyCandles(params: {
   jwt: string;
   historicalApiKey: string;
@@ -128,7 +130,8 @@ export async function fetchDailyCandles(params: {
   symbolToken: string;
   name: string;
 }): Promise<Candle[]> {
-  const end = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // Window ends at "today" in IST so the session that just closed is included.
+  const end = new Date(Date.now() + IST_OFFSET_MS);
   const start = new Date(end.getTime() - 365 * 24 * 60 * 60 * 1000);
   const payload = {
     exchange: params.exchange,
