@@ -124,7 +124,7 @@ export function buildForecast(nifty: Candle[], vix: Candle[]): Forecast {
   };
 }
 
-export async function runDailyForecast(): Promise<Forecast> {
+export async function runDailyForecast(): Promise<{ forecast: Forecast; nifty: Candle[] }> {
   const apiKey = process.env["ANGEL_API_KEY"];
   const clientId = process.env["ANGEL_CLIENT_ID"];
   const password = process.env["ANGEL_CLIENT_PASSWORD"];
@@ -155,18 +155,58 @@ export async function runDailyForecast(): Promise<Forecast> {
     name: "INDIA_VIX",
   });
 
-  return buildForecast(nifty, vix);
+  return { forecast: buildForecast(nifty, vix), nifty };
 }
 
 export async function runAndStoreForecast(): Promise<Forecast> {
-  const forecast = await runDailyForecast();
+  const { forecast, nifty } = await runDailyForecast();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await supabaseAdmin
     .from("nifty_forecasts")
     .upsert(forecast, { onConflict: "forecast_date" });
   if (error) throw new Error(`Failed to save forecast: ${error.message}`);
+
+  await settleActuals(nifty);
   return forecast;
 }
+
+/**
+ * Attach realized OHLC to any stored forecast whose forecast_date already has a
+ * printed daily candle but no actuals yet, so the Accuracy tab stays current.
+ */
+export async function settleActuals(nifty: Candle[]): Promise<number> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const recent = nifty.slice(-40);
+  if (recent.length === 0) return 0;
+  const earliest = recent[0]!.datetime.slice(0, 10);
+
+  const { data, error } = await supabaseAdmin
+    .from("nifty_forecasts")
+    .select("id, forecast_date")
+    .gte("forecast_date", earliest)
+    .is("actual_close", null);
+  if (error) throw new Error(`Failed to read pending forecasts: ${error.message}`);
+
+  const byDay = new Map(recent.map((c) => [c.datetime.slice(0, 10), c]));
+  let settled = 0;
+  for (const row of data ?? []) {
+    const candle = byDay.get(row.forecast_date);
+    if (!candle) continue;
+    const { error: updateError } = await supabaseAdmin
+      .from("nifty_forecasts")
+      .update({
+        actual_open: round(candle.open),
+        actual_high: round(candle.high),
+        actual_low: round(candle.low),
+        actual_close: round(candle.close),
+      })
+      .eq("id", row.id);
+    if (updateError) throw new Error(`Failed to settle actuals: ${updateError.message}`);
+    settled++;
+  }
+  return settled;
+}
+
 
 export type BackfillResult = { inserted: number; dates: string[] };
 
