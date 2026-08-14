@@ -1,0 +1,1 @@
+DELETE FROM public.nifty_forecasts WHERE forecast_date IN ('2026-08-13','2026-08-14');
