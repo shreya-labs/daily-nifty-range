@@ -131,9 +131,17 @@ export async function login(config: {
 
 function isRateLimit(message: string): boolean {
   const m = message.toLowerCase();
-  return ["access rate", "rate limit", "too many requests", "exceeding access", "429"].some(
-    (marker) => m.includes(marker),
-  );
+  return [
+    "access rate",
+    "rate limit",
+    "too many requests",
+    "exceeding access",
+    "429",
+    // Angel's WAF returns a plain "Access denied" page when it throttles or
+    // temporarily blocks a caller — worth retrying with backoff.
+    "access denied",
+    "non-json response",
+  ].some((marker) => m.includes(marker));
 }
 
 function formatDate(d: Date): string {
