@@ -59,6 +59,11 @@ function baseHeaders(privateKey: string): Record<string, string> {
   return {
     "Content-Type": "application/json",
     Accept: "application/json",
+    // Angel's edge/WAF rejects requests without a normal browser-ish UA with a
+    // plain-text "Access denied" body, so always send one.
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
     "X-UserType": "USER",
     "X-SourceID": "WEB",
     "X-ClientLocalIP": "127.0.0.1",
@@ -66,6 +71,21 @@ function baseHeaders(privateKey: string): Record<string, string> {
     "X-MACAddress": "00:00:00:00:00:00",
     "X-PrivateKey": privateKey,
   };
+}
+
+/**
+ * Angel sometimes answers with plain text ("Access denied", HTML error pages).
+ * Parse defensively so the failure message says what actually came back.
+ */
+async function parseJsonResponse(res: Response, label: string): Promise<Record<string, unknown>> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(
+      `${label}: non-JSON response (HTTP ${res.status}): ${text.slice(0, 200).replace(/\s+/g, " ").trim()}`,
+    );
+  }
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
