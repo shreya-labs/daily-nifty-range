@@ -223,7 +223,7 @@ async function requestCandles(
           body: JSON.stringify(payload),
         },
       );
-      const json = (await res.json()) as {
+      const json = (await parseJsonResponse(res, `Candle download for ${params.name}`)) as {
         status?: boolean;
         message?: string;
         data?: unknown[];
