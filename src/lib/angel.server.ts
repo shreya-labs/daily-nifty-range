@@ -112,7 +112,7 @@ export async function login(config: {
           }),
         },
       );
-      const json = (await res.json()) as {
+      const json = (await parseJsonResponse(res, "SmartAPI login")) as {
         status?: boolean;
         message?: string;
         data?: { jwtToken?: string };
