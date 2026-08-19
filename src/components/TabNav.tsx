@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 const tabs = [
   { to: "/", label: "Forecast" },
   { to: "/accuracy", label: "Accuracy" },
+  { to: "/debug", label: "Debug" },
 ] as const;
 
 export function TabNav() {
