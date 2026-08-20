@@ -262,3 +262,18 @@ async function requestCandles(
   }
   throw new Error(`Failed to download ${params.name}: ${lastError}`);
 }
+
+/** Read-only helper: fetch intraday candles for an explicit window. */
+export async function requestIntradayCandles(params: {
+  jwt: string;
+  historicalApiKey: string;
+  exchange: string;
+  symbolToken: string;
+  name: string;
+  interval: string;
+  fromdate: string;
+  todate: string;
+}): Promise<Candle[]> {
+  const { interval, fromdate, todate, ...rest } = params;
+  return requestCandles(rest, { interval, fromdate, todate });
+}
