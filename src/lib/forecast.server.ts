@@ -283,3 +283,72 @@ export async function backfillForecasts(
 
   return { inserted: rows.length, dates: rows.map((r) => r.forecast_date) };
 }
+
+export type PreviewResult = {
+  forecast: Forecast;
+  actual: { open: number; high: number; low: number; close: number } | null;
+};
+
+/**
+ * Dry-run: compute the forecast for a given forecast date (or the latest
+ * available session) WITHOUT writing anything to the database.
+ */
+export async function previewForecast(dateISO?: string): Promise<PreviewResult> {
+  const apiKey = process.env["ANGEL_API_KEY"];
+  const clientId = process.env["ANGEL_CLIENT_ID"];
+  const password = process.env["ANGEL_CLIENT_PASSWORD"];
+  const totpSecret = process.env["ANGEL_TOTP_SECRET"];
+  if (!apiKey || !clientId || !password || !totpSecret) {
+    throw new Error("Missing Angel One credentials");
+  }
+
+  const jwt = await login({ apiKey, clientId, password, totpSecret });
+  const nifty = await fetchDailyCandles({
+    jwt,
+    historicalApiKey: apiKey,
+    exchange: "NSE",
+    symbolToken: "99926000",
+    name: "NIFTY_50",
+  });
+  await new Promise((r) => setTimeout(r, 3000));
+  const vix = await fetchDailyCandles({
+    jwt,
+    historicalApiKey: apiKey,
+    exchange: "NSE",
+    symbolToken: "99926017",
+    name: "INDIA_VIX",
+  });
+
+  const day = (c: Candle) => c.datetime.slice(0, 10);
+
+  if (!dateISO) {
+    return { forecast: buildForecast(nifty, vix), actual: null };
+  }
+
+  const index = nifty.findIndex((c) => day(c) === dateISO);
+  if (index < 31) {
+    if (index === -1) {
+      throw new Error(
+        `No NIFTY trading candle for ${dateISO} (holiday, weekend, or not printed yet).`,
+      );
+    }
+    throw new Error(`Not enough history before ${dateISO} to build a forecast.`);
+  }
+
+  const target = nifty[index]!;
+  const priorNifty = nifty.slice(0, index);
+  const asOf = day(priorNifty[priorNifty.length - 1]!);
+  const priorVix = vix.filter((c) => day(c) <= asOf);
+  if (priorVix.length === 0) throw new Error(`No India VIX data on or before ${asOf}.`);
+
+  const forecast = buildForecast(priorNifty, priorVix);
+  return {
+    forecast: { ...forecast, forecast_date: dateISO },
+    actual: {
+      open: round(target.open),
+      high: round(target.high),
+      low: round(target.low),
+      close: round(target.close),
+    },
+  };
+}
