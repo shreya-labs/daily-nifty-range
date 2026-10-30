@@ -28,9 +28,9 @@ export const Route = createFileRoute("/accuracy")({
     ],
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(historyQueryOptions),
-  errorComponent: ({ error }) => (
+  errorComponent: ({ error }: { error: unknown }) => (
     <div role="alert" className="p-10 text-sm text-bear">
-      {error.message}
+      {error instanceof Error ? error.message : String(error)}
     </div>
   ),
   notFoundComponent: () => <div className="p-10 text-sm">No history found.</div>,

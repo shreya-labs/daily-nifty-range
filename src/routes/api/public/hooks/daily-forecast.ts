@@ -6,8 +6,8 @@ export const Route = createFileRoute("/api/public/hooks/daily-forecast")({
       POST: async () => {
         try {
           const { runAndStoreForecast } = await import("@/lib/forecast.server");
-          const forecast = await runAndStoreForecast();
-          return Response.json({ success: true, forecast });
+          const { forecast, gapsFilled } = await runAndStoreForecast();
+          return Response.json({ success: true, forecast, gapsFilled });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           console.error("Daily forecast job failed:", message);

@@ -124,7 +124,11 @@ export function buildForecast(nifty: Candle[], vix: Candle[]): Forecast {
   };
 }
 
-export async function runDailyForecast(): Promise<{ forecast: Forecast; nifty: Candle[] }> {
+export async function runDailyForecast(): Promise<{
+  forecast: Forecast;
+  nifty: Candle[];
+  vix: Candle[];
+}> {
   const apiKey = process.env["ANGEL_API_KEY"];
   const clientId = process.env["ANGEL_CLIENT_ID"];
   const password = process.env["ANGEL_CLIENT_PASSWORD"];
@@ -155,11 +159,14 @@ export async function runDailyForecast(): Promise<{ forecast: Forecast; nifty: C
     name: "INDIA_VIX",
   });
 
-  return { forecast: buildForecast(nifty, vix), nifty };
+  return { forecast: buildForecast(nifty, vix), nifty, vix };
 }
 
-export async function runAndStoreForecast(): Promise<Forecast> {
-  const { forecast, nifty } = await runDailyForecast();
+export async function runAndStoreForecast(): Promise<{
+  forecast: Forecast;
+  gapsFilled: number;
+}> {
+  const { forecast, nifty, vix } = await runDailyForecast();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await supabaseAdmin
     .from("nifty_forecasts")
@@ -167,7 +174,89 @@ export async function runAndStoreForecast(): Promise<Forecast> {
   if (error) throw new Error(`Failed to save forecast: ${error.message}`);
 
   await settleActuals(nifty);
-  return forecast;
+  let gapsFilled = 0;
+  try {
+    gapsFilled = await backfillGapsFromCandles(nifty, vix);
+  } catch (error) {
+    console.error(
+      "Gap backfill failed (main forecast is unaffected):",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  return { forecast, gapsFilled };
+}
+
+/**
+ * After every successful run, scan the recent candles for any as_of_date not
+ * yet in the DB (job failures, holiday re-runs that produced duplicate upserts,
+ * etc.) and insert the missing forecasts using already-fetched candle data —
+ * no extra Angel API calls. Uses the actual next-candle date as forecast_date,
+ * so gaps across NSE holidays are handled correctly even though nextTradingDay
+ * only skips weekends. Best-effort: errors are thrown to the caller, which
+ * swallows them so the main forecast is never rolled back.
+ */
+async function backfillGapsFromCandles(nifty: Candle[], vix: Candle[]): Promise<number> {
+  if (nifty.length < 33) return 0;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const day = (c: Candle) => c.datetime.slice(0, 10);
+
+  // Examine the recent candles except the very last one (today's close, which
+  // was just stored as today's forecast).
+  const startIdx = Math.max(31, nifty.length - 16);
+  const window = nifty.slice(startIdx, nifty.length - 1);
+  if (window.length === 0) return 0;
+
+  const earliest = day(window[0]!);
+  const { data: existing, error: queryError } = await supabaseAdmin
+    .from("nifty_forecasts")
+    .select("as_of_date")
+    .gte("as_of_date", earliest);
+  if (queryError) throw new Error(queryError.message);
+
+  const existingAsOfDates = new Set((existing ?? []).map((r) => String(r.as_of_date)));
+
+  const rows: (Forecast & {
+    actual_open: number;
+    actual_high: number;
+    actual_low: number;
+    actual_close: number;
+  })[] = [];
+
+  for (const candle of window) {
+    const asOf = day(candle);
+    if (existingAsOfDates.has(asOf)) continue;
+
+    const idx = nifty.findIndex((c) => day(c) === asOf);
+    if (idx < 31) continue;
+
+    const priorNifty = nifty.slice(0, idx + 1);
+    const priorVix = vix.filter((c) => day(c) <= asOf);
+    if (priorVix.length === 0) continue;
+
+    const forecast = buildForecast(priorNifty, priorVix);
+
+    // Use the actual next candle date (holiday-aware, unlike nextTradingDay)
+    const nextCandle = nifty[idx + 1];
+    if (!nextCandle) continue;
+
+    rows.push({
+      ...forecast,
+      forecast_date: day(nextCandle),
+      actual_open: round(nextCandle.open),
+      actual_high: round(nextCandle.high),
+      actual_low: round(nextCandle.low),
+      actual_close: round(nextCandle.close),
+    });
+  }
+
+  if (rows.length === 0) return 0;
+
+  const { error } = await supabaseAdmin
+    .from("nifty_forecasts")
+    .upsert(rows, { onConflict: "forecast_date" });
+  if (error) throw new Error(error.message);
+
+  return rows.length;
 }
 
 /**
